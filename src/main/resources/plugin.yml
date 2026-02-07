@@ -1,0 +1,10 @@
+name: EconomyCore
+version: 1.0.0
+main: jp.asteria.economy.EconomyCore
+description: 経済プラグイン
+author: deceitya
+website: https://github.com/XxPMMPERxX/EconomyCore
+api: 2.0.0
+load: POSTWORLD
+depend:
+  - DBConnectorN
