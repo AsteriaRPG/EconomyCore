@@ -1,32 +1,32 @@
 package jp.asteria.economy
 
-import java.util.UUID
+import cn.nukkit.IPlayer
 
 interface IEconomyCore {
     /**
-     * アカウントが存在するか
+     * データが存在するか
      *
-     * @param account
+     * @param player
      * @return
      */
-    fun existsAccount(account: UUID): Boolean
+    fun existsData(player: IPlayer): Boolean
 
     /**
      * 所持金を取得する
      *
-     * @param account
+     * @param player
      * @return
      */
-    fun getBalance(account: UUID): Long
+    fun getBalance(player: IPlayer): Long
 
     /**
      * 十分な所持金を所持しているか
      *
-     * @param account
+     * @param player
      * @param amount
      * @return 所持している場合はtrue
      */
-    fun hasEnoughMoney(account: UUID, amount: Long): Boolean
+    fun hasEnoughMoney(player: IPlayer, amount: Long): Boolean
 
     /**
      * 所持金を増やす
@@ -36,7 +36,7 @@ interface IEconomyCore {
      * @param reason
      * @return 増やせた場合はtrue
      */
-    fun increaseMoney(player: UUID, amount: Long, reason: String = ""): Boolean
+    fun increaseMoney(player: IPlayer, amount: Long, reason: String = ""): Boolean
 
     /**
      * 所持金を減らす
@@ -46,5 +46,16 @@ interface IEconomyCore {
      * @param reason
      * @return 減らせた場合はtrue
      */
-    fun decreaseMoney(player: UUID, amount: Long, reason: String = ""): Boolean
+    fun decreaseMoney(player: IPlayer, amount: Long, reason: String = ""): Boolean
+
+    /**
+     * 送金する
+     *
+     * @param from 送金元
+     * @param to   送金先
+     * @param amount
+     * @param reason
+     * @return
+     */
+    fun transferMoney(from: IPlayer, to: IPlayer, amount: Long, reason: String = ""): Boolean
 }

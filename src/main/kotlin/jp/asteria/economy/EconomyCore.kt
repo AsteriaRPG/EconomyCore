@@ -1,278 +1,149 @@
 package jp.asteria.economy
 
-import cn.nukkit.Player
+import cn.nukkit.IPlayer
+import cn.nukkit.event.EventHandler
+import cn.nukkit.event.EventPriority
+import cn.nukkit.event.Listener
+import cn.nukkit.event.player.PlayerJoinEvent
 import cn.nukkit.plugin.PluginBase
 import jp.asteria.dbconnector.Database
-import jp.asteria.economy.database.PlayerBalance
-import jp.asteria.economy.database.PlayerBalancesTable
-import jp.asteria.economy.database.TransactionLog
-import jp.asteria.economy.database.TransactionLogsTable
-import org.jetbrains.exposed.sql.Database as ExposedDatabase
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.time.LocalDateTime
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-import javax.sql.DataSource
+import jp.asteria.economy.infrastructure.MoneyTransactionEntity
+import jp.asteria.economy.infrastructure.MoneyTransactionsTable
+import jp.asteria.economy.infrastructure.WalletEntity
+import jp.asteria.economy.infrastructure.WalletsTable
+import jp.asteria.player.infrastructure.PlayerEntity
+import jp.asteria.player.primaryId
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.exists
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import kotlin.time.Clock
+import org.jetbrains.exposed.v1.jdbc.Database as ExposedDatabase
 
 /**
  * 経済管理プラグイン
  *
  * プレイヤーの所持金を管理
  */
-class EconomyCore : PluginBase(), IEconomyCore {
+class EconomyCore : PluginBase(), Listener, IEconomyCore {
     companion object {
-        lateinit var instance: EconomyCore
+        lateinit var api: IEconomyCore
             private set
 
         /** 初期所持金 */
         const val DEFAULT_BALANCE = 1000L
 
         /** 通貨単位 */
-        const val CURRENCY_UNIT = "G"
+        const val CURRENCY_UNIT = "円"
     }
 
-    // キャッシュ（パフォーマンス向上用）
-    private val balanceCache = ConcurrentHashMap<UUID, Long>()
-
     override fun onLoad() {
-        instance = this
+        api = this
     }
 
     override fun onEnable() {
-        try {
-            // リフレクションでDatabaseのdataSourceにアクセス
-            val dataSourceField = Database::class.java.getDeclaredField("dataSource")
-            dataSourceField.isAccessible = true
-            val dataSource = dataSourceField.get(Database) as DataSource
+        ExposedDatabase.connect(Database.getDataSource())
+        transaction {
+            SchemaUtils.create(WalletsTable, MoneyTransactionsTable)
+        }
 
-            // DataSourceを使用してExposedに接続
-            ExposedDatabase.connect(dataSource)
+        server.pluginManager.registerEvents(this, this)
+    }
 
-            // テーブル作成
-            transaction {
-                SchemaUtils.create(
-                    PlayerBalancesTable,
-                    TransactionLogsTable
-                )
-            }
-
-            logger.info("EconomyCore has been enabled!")
-        } catch (e: Exception) {
-            logger.error("Failed to initialize EconomyCore tables", e)
-            server.pluginManager.disablePlugin(this)
+    @EventHandler(priority = EventPriority.LOW)
+    fun onJoin(event: PlayerJoinEvent) {
+        val player = event.player
+        server.broadcastMessage(existsData(player).toString())
+        if (!existsData(player)) {
+            createWallet(player)
+            increaseMoney(player, DEFAULT_BALANCE, "初期所持金")
         }
     }
 
-    override fun onDisable() {
-        // キャッシュをクリア
-        balanceCache.clear()
-        logger.info("EconomyCore has been disabled!")
-    }
-
-    /**
-     * アカウントが存在するか確認
-     */
-    override fun existsAccount(account: UUID): Boolean {
+    override fun existsData(player: IPlayer): Boolean {
         return transaction {
-            PlayerBalance.find { PlayerBalancesTable.uuid eq account.toString() }.firstOrNull() != null
+            WalletEntity.find { WalletsTable.owner eq player.primaryId }.firstOrNull() != null
         }
     }
 
-    /**
-     * アカウントを作成（存在しない場合）
-     */
-    fun createAccount(account: UUID): Boolean {
-        if (existsAccount(account)) return false
+    override fun getBalance(player: IPlayer) = getWallet(player).balance
 
-        return transaction {
-            PlayerBalance.new {
-                uuid = account.toString()
-                balance = DEFAULT_BALANCE
-                createdAt = LocalDateTime.now()
-                updatedAt = LocalDateTime.now()
-            }
-            balanceCache[account] = DEFAULT_BALANCE
-            true
-        }
-    }
+    override fun hasEnoughMoney(player: IPlayer, amount: Long) = getBalance(player) >= amount
 
-    /**
-     * アカウントを取得または作成
-     */
-    private fun getOrCreateBalance(account: UUID): PlayerBalance {
-        return transaction {
-            PlayerBalance.find { PlayerBalancesTable.uuid eq account.toString() }.firstOrNull()
-                ?: PlayerBalance.new {
-                    uuid = account.toString()
-                    balance = DEFAULT_BALANCE
-                    createdAt = LocalDateTime.now()
-                    updatedAt = LocalDateTime.now()
-                }
-        }
-    }
-
-    /**
-     * 所持金を取得
-     */
-    override fun getBalance(account: UUID): Long {
-        // キャッシュから取得を試みる
-        balanceCache[account]?.let { return it }
-
-        return transaction {
-            val playerBalance = getOrCreateBalance(account)
-            balanceCache[account] = playerBalance.balance
-            playerBalance.balance
-        }
-    }
-
-    /**
-     * 十分な所持金があるか確認
-     */
-    override fun hasEnoughMoney(account: UUID, amount: Long): Boolean {
-        return getBalance(account) >= amount
-    }
-
-    /**
-     * 所持金を増やす
-     */
-    override fun increaseMoney(player: UUID, amount: Long, reason: String): Boolean {
-        if (amount <= 0) return false
-
-        return transaction {
-            val playerBalance = getOrCreateBalance(player)
-            playerBalance.balance += amount
-            playerBalance.updatedAt = LocalDateTime.now()
-
-            // キャッシュを更新
-            balanceCache[player] = playerBalance.balance
-
-            // 取引ログを記録
-            TransactionLog.new {
-                uuid = player.toString()
-                this.amount = amount
-                balanceAfter = playerBalance.balance
-                this.reason = reason.ifEmpty { "income" }
-                createdAt = LocalDateTime.now()
-            }
-
-            true
-        }
-    }
-
-    /**
-     * 所持金を減らす
-     */
-    override fun decreaseMoney(player: UUID, amount: Long, reason: String): Boolean {
-        if (amount <= 0) return false
-
-        return transaction {
-            val playerBalance = getOrCreateBalance(player)
-
-            if (playerBalance.balance < amount) {
-                return@transaction false
-            }
-
-            playerBalance.balance -= amount
-            playerBalance.updatedAt = LocalDateTime.now()
-
-            // キャッシュを更新
-            balanceCache[player] = playerBalance.balance
-
-            // 取引ログを記録
-            TransactionLog.new {
-                uuid = player.toString()
-                this.amount = -amount
-                balanceAfter = playerBalance.balance
-                this.reason = reason.ifEmpty { "expense" }
-                createdAt = LocalDateTime.now()
-            }
-
-            true
-        }
-    }
-
-    /**
-     * 所持金を設定
-     */
-    fun setBalance(player: UUID, amount: Long, reason: String = ""): Boolean {
+    override fun increaseMoney(player: IPlayer, amount: Long, reason: String): Boolean {
         if (amount < 0) return false
 
         return transaction {
-            val playerBalance = getOrCreateBalance(player)
-            val diff = amount - playerBalance.balance
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
-            playerBalance.balance = amount
-            playerBalance.updatedAt = LocalDateTime.now()
-
-            // キャッシュを更新
-            balanceCache[player] = amount
+            // 所持金を更新
+            val wallet = getWallet(player)
+            wallet.balance += amount
+            wallet.updatedAt = now
 
             // 取引ログを記録
-            TransactionLog.new {
-                uuid = player.toString()
-                this.amount = diff
-                balanceAfter = amount
-                this.reason = reason.ifEmpty { "set_balance" }
-                createdAt = LocalDateTime.now()
+            MoneyTransactionEntity.new {
+                from = null
+                to = wallet
+                this.amount = amount
+                details = reason
+                createdAt = now
             }
 
             true
         }
     }
 
-    /**
-     * プレイヤー間送金
-     */
-    fun transfer(from: UUID, to: UUID, amount: Long, reason: String = ""): Boolean {
-        if (amount <= 0) return false
+    override fun decreaseMoney(player: IPlayer, amount: Long, reason: String): Boolean {
+        if (amount < 0) return false
+
+        return transaction {
+            val wallet = getWallet(player)
+
+            // 所持金より少ない場合はfalse
+            if (wallet.balance < amount) return@transaction false
+
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
+            wallet.balance -= amount
+            wallet.updatedAt = now
+
+            // 取引ログを記録
+            MoneyTransactionEntity.new {
+                from = wallet
+                to = null
+                this.amount = amount
+                details = reason
+                createdAt = now
+            }
+
+            true
+        }
+    }
+
+    override fun transferMoney(
+        from: IPlayer,
+        to: IPlayer,
+        amount: Long,
+        reason: String
+    ): Boolean {
+        if (amount < 0) return false
         if (!hasEnoughMoney(from, amount)) return false
 
         return transaction {
-            val success = decreaseMoney(from, amount, "transfer_to:$to $reason")
+            val success = decreaseMoney(from, amount, reason.ifEmpty { "${to.name}へ支払い" })
             if (success) {
-                increaseMoney(to, amount, "transfer_from:$from $reason")
+                increaseMoney(to, amount, reason.ifEmpty { "${from.name}から受け取り" })
             }
             success
         }
     }
 
-    // ---- Player便利メソッド ----
+    private fun getWallet(player: IPlayer) =
+        transaction { WalletEntity.find { WalletsTable.owner eq player.primaryId }.first() }
 
-    /**
-     * Playerオブジェクトから残高取得
-     */
-    fun getBalance(player: Player): Long = getBalance(player.uniqueId)
-
-    /**
-     * Playerオブジェクトで十分な所持金があるか確認
-     */
-    fun hasEnoughMoney(player: Player, amount: Long): Boolean = hasEnoughMoney(player.uniqueId, amount)
-
-    /**
-     * Playerオブジェクトで所持金を増やす
-     */
-    fun increaseMoney(player: Player, amount: Long, reason: String = ""): Boolean =
-        increaseMoney(player.uniqueId, amount, reason)
-
-    /**
-     * Playerオブジェクトで所持金を減らす
-     */
-    fun decreaseMoney(player: Player, amount: Long, reason: String = ""): Boolean =
-        decreaseMoney(player.uniqueId, amount, reason)
-
-    /**
-     * フォーマットされた残高文字列を取得
-     */
-    fun getFormattedBalance(player: Player): String {
-        val balance = getBalance(player)
-        return formatMoney(balance)
-    }
-
-    /**
-     * 金額をフォーマット
-     */
-    fun formatMoney(amount: Long): String {
-        return "${"%,d".format(amount)}$CURRENCY_UNIT"
-    }
+    private fun createWallet(player: IPlayer) =
+        transaction { WalletEntity.new { owner = PlayerEntity.findById(player.primaryId!!)!! } }
 }

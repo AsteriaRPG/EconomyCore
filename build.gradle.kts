@@ -1,9 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.2.21"
+    kotlin("jvm") version "2.3.0"
+    id("com.gradleup.shadow") version "9.3.0"
+    `maven-publish`
 }
 
 group = "jp.asteria"
-version = "1.0-SNAPSHOT"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -17,13 +19,45 @@ repositories {
             password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
         }
     }
+    maven {
+        url = uri("https://maven.pkg.github.com/xxpmmperxx/PlayersID")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
+    compileOnly(kotlin("stdlib"))
     compileOnly("org.powernukkitx:server:2.0.0-SNAPSHOT")
-    compileOnly("jp.asteria:db-connector-n:1.0.0")
+    compileOnly("jp.asteria:db-connector-n:1.2.0")
+    compileOnly("jp.asteria:players-id:1.2.1")
+    implementation("org.jetbrains.exposed:exposed-core:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-dao:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:1.0.0")
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:1.0.0")
 }
 
 kotlin {
     jvmToolchain(21)
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/xxpmmperxx/EconomyCore")
+            credentials {
+                username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+                password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        register<MavenPublication>("gpr") {
+            artifactId = "economy-core"
+            from(components["java"])
+        }
+    }
 }
