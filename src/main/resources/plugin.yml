@@ -9,3 +9,23 @@ load: POSTWORLD
 depend:
   - DBConnectorN
   - PlayersID
+permissions:
+  jp.asteria.economy.commands:
+    money:
+      description: for /money
+      default: true
+    pay:
+      description: for /money pay
+      default: true
+    help:
+      description: for /money help
+      default: true
+    give:
+      description: for /money give
+      default: op
+    take:
+      description: for /money take
+      default: op
+    show:
+      description6: for /money show
+      default: op

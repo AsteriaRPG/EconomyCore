@@ -7,6 +7,7 @@ import cn.nukkit.event.Listener
 import cn.nukkit.event.player.PlayerJoinEvent
 import cn.nukkit.plugin.PluginBase
 import jp.asteria.dbconnector.Database
+import jp.asteria.economy.command.MoneyCommand
 import jp.asteria.economy.infrastructure.MoneyTransactionEntity
 import jp.asteria.economy.infrastructure.MoneyTransactionsTable
 import jp.asteria.economy.infrastructure.WalletEntity
@@ -16,7 +17,6 @@ import jp.asteria.player.primaryId
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.exists
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.time.Clock
@@ -50,6 +50,7 @@ class EconomyCore : PluginBase(), Listener, IEconomyCore {
         }
 
         server.pluginManager.registerEvents(this, this)
+        server.commandMap.register("money", MoneyCommand())
     }
 
     @EventHandler(priority = EventPriority.LOW)
