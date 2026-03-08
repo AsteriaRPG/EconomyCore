@@ -31,7 +31,7 @@ class GiveMoneyCommand : Command("money", "お金を付与する", "/money give 
         }
 
         val target = sender.server.getOfflinePlayer(args[0])
-        if (!EconomyCore.api.existsData(target)) {
+        if (target == null || !EconomyCore.api.existsData(target)) {
             sender.sendMessage("${TextFormat.RED}${target.name}のデータが見つかりません。")
             return false
         }

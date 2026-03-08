@@ -35,7 +35,7 @@ class PayMoneyCommand : Command("money", "お金を支払う", "/money pay <プ�
             sender.sendMessage("${TextFormat.RED}${sender.name}のデータが見つかりません。")
             return false
         }
-        if (!EconomyCore.api.existsData(target)) {
+        if (target == null || !EconomyCore.api.existsData(target)) {
             sender.sendMessage("${TextFormat.RED}${target.name}のデータが見つかりません。")
             return false
         }

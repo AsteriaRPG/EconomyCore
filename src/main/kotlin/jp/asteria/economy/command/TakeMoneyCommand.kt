@@ -31,12 +31,12 @@ class TakeMoneyCommand : Command("money", "お金を剥奪する", "/money take 
         }
 
         val target = sender.server.getOfflinePlayer(args[0])
-        if (!EconomyCore.api.existsData(target)) {
+        if (target == null || !EconomyCore.api.existsData(target)) {
             sender.sendMessage("${TextFormat.RED}${target.name}のデータが見つかりません。")
             return false
         }
 
-        if (EconomyCore.api.increaseMoney(target, amount, "管理者(${sender.name})からの剝奪")) {
+        if (EconomyCore.api.decreaseMoney(target, amount, "管理者(${sender.name})からの剝奪")) {
             sender.sendMessage("${TextFormat.GREEN}${target.name}から${amount.formatMoney()}を剝奪しました。")
             if (target is Player) target.sendMessage("管理者により(${sender.name})${amount.formatMoney()}を徴収されました。")
             return true
