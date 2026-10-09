@@ -1,7 +1,7 @@
 package jp.asteria.economy.command
 
-import cn.nukkit.command.Command
-import cn.nukkit.command.CommandSender
+import org.powernukkitx.command.Command
+import org.powernukkitx.command.CommandSender
 
 class HelpMoneyCommand : Command("money", "使い方表示", "/money help") {
     init {

@@ -1,6 +1,6 @@
 package jp.asteria.economy
 
-import cn.nukkit.IPlayer
+import org.powernukkitx.IPlayer
 
 interface IEconomyCore {
     /**

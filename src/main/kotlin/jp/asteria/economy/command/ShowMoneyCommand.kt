@@ -1,8 +1,8 @@
 package jp.asteria.economy.command
 
-import cn.nukkit.command.Command
-import cn.nukkit.command.CommandSender
-import cn.nukkit.utils.TextFormat
+import org.powernukkitx.command.Command
+import org.powernukkitx.command.CommandSender
+import org.powernukkitx.utils.TextFormat
 import jp.asteria.economy.EconomyCore
 import jp.asteria.economy.formatMoney
 
