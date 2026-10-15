@@ -1,5 +1,5 @@
 name: EconomyCore
-version: 0.2.1
+version: 0.3.0
 main: jp.asteria.economy.EconomyCore
 description: 経済プラグイン
 author: deceitya
@@ -10,22 +10,21 @@ depend:
   - DBConnectorN
   - PlayersID
 permissions:
-  jp.asteria.economy.commands:
-    money:
-      description: for /money
-      default: true
-    pay:
-      description: for /money pay
-      default: true
-    help:
-      description: for /money help
-      default: true
-    give:
-      description: for /money give
-      default: op
-    take:
-      description: for /money take
-      default: op
-    show:
-      description6: for /money show
-      default: op
+  jp.asteria.economy.commands.money:
+    description: for /money
+    default: true
+  jp.asteria.economy.commands.pay:
+    description: for /money pay
+    default: true
+  jp.asteria.economy.commands.help:
+    description: for /money help
+    default: true
+  jp.asteria.economy.commands.give:
+    description: for /money give
+    default: op
+  jp.asteria.economy.commands.take:
+    description: for /money take
+    default: op
+  jp.asteria.economy.commands.show:
+    description: for /money show
+    default: op

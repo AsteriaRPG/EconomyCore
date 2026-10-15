@@ -8,6 +8,7 @@ import jp.asteria.economy.EconomyCore
 import jp.asteria.economy.formatMoney
 
 class MoneyCommand : Command("money", "所持金に関するコマンド", "/money help") {
+    init { permission = "jp.asteria.economy.commands.money" }
     private val subCommands = mapOf<String, Command>(
         "help" to HelpMoneyCommand(),
         "pay" to PayMoneyCommand(),
@@ -17,6 +18,7 @@ class MoneyCommand : Command("money", "所持金に関するコマンド", "/mon
     )
 
     override fun execute(sender: CommandSender, commandLabel: String, args: Array<out String>): Boolean {
+        if (!testPermission(sender)) return true
         // 引数なしの場合は所持金表示
         if (args.isEmpty()) {
             return executeBalance(sender)
@@ -28,6 +30,7 @@ class MoneyCommand : Command("money", "所持金に関するコマンド", "/mon
             sender.sendMessage(usageMessage)
             return false
         }
+        if (!subCommand.testPermission(sender)) return true
         return subCommand.execute(sender, args[0], args.drop(1).toTypedArray())
     }
 

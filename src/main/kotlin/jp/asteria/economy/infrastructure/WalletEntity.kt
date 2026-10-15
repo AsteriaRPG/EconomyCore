@@ -26,5 +26,5 @@ class WalletEntity(id: EntityID<Int>) : IntEntity(id) {
     /**
      * 送受信をまとめて取得(createdAt でソート)
      */
-    val allTransactions by lazy { (sentTransactions + receivedTransactions).sortedBy { it.createdAt } }
+    val allTransactions get() = (sentTransactions + receivedTransactions).distinctBy { it.id.value }.sortedBy { it.createdAt }
 }
