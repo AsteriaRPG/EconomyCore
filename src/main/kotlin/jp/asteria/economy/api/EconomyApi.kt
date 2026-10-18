@@ -9,8 +9,6 @@ import jp.asteria.economy.service.WalletStore
 import jp.asteria.player.infrastructure.PlayerTransactions
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
-data class WalletSnapshot(val walletId: Int, val playerId: Int, val balance: Long)
-
 /** IDだけで呼べる通貨API。金融更新と取引ログを同じplayer root・SQL境界で確定する。 */
 object EconomyApi {
     @Volatile private var active = false
