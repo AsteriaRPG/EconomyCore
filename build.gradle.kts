@@ -13,14 +13,14 @@ repositories {
     maven("https://repo.opencollab.dev/maven-releases")
     maven("https://repo.opencollab.dev/maven-snapshots")
     maven {
-        url = uri("https://maven.pkg.github.com/xxpmmperxx/DBConnectorN")
+        url = uri("https://maven.pkg.github.com/AsteriaRPG/DBConnectorN")
         credentials {
             username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
             password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
         }
     }
     maven {
-        url = uri("https://maven.pkg.github.com/xxpmmperxx/PlayersID")
+        url = uri("https://maven.pkg.github.com/AsteriaRPG/PlayersID")
         credentials {
             username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
             password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
@@ -51,7 +51,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/xxpmmperxx/EconomyCore")
+            url = uri("https://maven.pkg.github.com/AsteriaRPG/EconomyCore")
             credentials {
                 username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
                 password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
